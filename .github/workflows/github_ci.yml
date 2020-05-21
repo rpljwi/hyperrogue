@@ -1,0 +1,110 @@
+name: Github CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  main_matrix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        compiler: [gcc, clang]
+        build_system: [makefile, autotools, mymake]
+        hyper_use_rviz: [rviz_1, rviz_0]
+        hyper_use_png: [png_1]
+        hyper_use_glew: [glew_1]
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: prepare_src
+      run: |
+        # HACK: some workarounds for now, but eventually the whole point of CI is testing things like that
+        sed -i'.orig' 's/-Werror//' Makefile.simple
+    
+    - name: install_deps
+      run: |
+        GH_DEPS_UBUNTU="${{ matrix.compiler }} libsdl1.2-dev libsdl-ttf2.0-dev libsdl-gfx1.2-dev libsdl-mixer1.2-dev"
+        GH_DEPS_MACOS="sdl sdl_gfx sdl_mixer sdl_ttf"
+        
+        if [[ "${{ matrix.hyper_use_glew }}" == "glew_1" ]]; then
+          GH_DEPS_UBUNTU+=" libglew-dev"
+          GH_DEPS_MACOS+=" glew"
+        fi
+        
+        if [[ "${{ matrix.hyper_use_png }}" == "png_1" ]]; then
+          GH_DEPS_UBUNTU+=" libpng-dev"
+          GH_DEPS_MACOS+=" libpng"
+        fi
+        
+        if [[ "${{ matrix.build_system }}" == "autotools" ]]; then
+          GH_DEPS_UBUNTU+=" autoconf"
+          GH_DEPS_MACOS+=" automake"
+        fi
+        
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          sudo apt-get -y install $GH_DEPS_UBUNTU
+        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+          brew update
+          # macos-latest already has both gcc and clang
+          brew install $GH_DEPS_MACOS
+          # work around https://stackoverflow.com/questions/51034399/ for now
+          (cd /usr/local/include && ln -sf SDL/SDL.h)
+        else
+          exit 'unknown OS'
+        fi
+        
+    - name: build
+      run: |
+        GH_MYMAKE_ARGS=""
+        GH_AUTOTOOLS_CXXFLAGS="-W -Wall -Wextra -Wno-unused-parameter -Wno-maybe-uninitialized"
+        
+        HYPERROGUE_USE_GLEW=${{ matrix.hyper_use_glew }}
+        export HYPERROGUE_USE_GLEW=${HYPERROGUE_USE_GLEW: -1}
+        
+        HYPERROGUE_USE_PNG=${{ matrix.hyper_use_png }}
+        export HYPERROGUE_USE_PNG=${HYPERROGUE_USE_PNG: -1}
+        
+        HYPERROGUE_USE_ROGUEVIZ=${{ matrix.hyper_use_rviz }}
+        export HYPERROGUE_USE_ROGUEVIZ=${HYPERROGUE_USE_ROGUEVIZ: -1}
+        if [[ "${{ matrix.hyper_use_rviz }}" == "rviz_1" ]]; then
+          GH_MYMAKE_ARGS+=" -rv"
+          GH_AUTOTOOLS_CXXFLAGS+=" -DCAP_ROGUEVIZ=1"
+        fi
+        
+        export CC=${{ matrix.compiler }}
+        export CXX=${CC%cc}++
+        
+        if [[ "${{ matrix.build_system }}" == "makefile" ]]; then
+          make -f Makefile.simple
+        elif [[ "${{ matrix.build_system }}" == "autotools" ]]; then
+          autoreconf -vfi
+          ./configure CXXFLAGS="${GH_AUTOTOOLS_CXXFLAGS}"
+          make
+        elif [[ "${{ matrix.build_system }}" == "mymake" ]]; then
+          make -f Makefile.simple mymake
+          ./mymake $GH_MYMAKE_ARGS
+          mv hyper hyperrogue
+        else
+          exit 'unknown build system'
+        fi
+        
+    - name: test_simple
+      run: |
+        ./hyperrogue --help
+
+
+  emscripten:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: build
+      run: |
+        docker run --rm -v $(pwd):/src trzeci/emscripten make -f Makefile.simple emscripten
+    - name: test
+      run: |
+        ls -lAF hyper.html hyper.js hyper.wasm
