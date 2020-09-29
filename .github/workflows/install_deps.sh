@@ -26,7 +26,6 @@ fi
 if [[ "$GH_OS" == "ubuntu-latest" ]]; then
   sudo apt-get -y install $GH_DEPS_UBUNTU
 elif [[ "$GH_OS" == "macos-latest" ]]; then
-  brew update
   # macos-latest already has both gcc and clang
   brew install $GH_DEPS_MACOS
   # work around https://stackoverflow.com/questions/51034399/ for now
