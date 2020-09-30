@@ -83,7 +83,7 @@ bool file_exists(string fname) {
   }
   
 int main(int argc, char **argv) {
-  setvbuf(stdout, NULL, _IONBF, 0); // this should help with responsiveness of the real-time CI logs
+  setvbuf(stdout, nullptr, _IONBF, 0); // this should help with responsiveness of the real-time CI logs
 #if defined(MAC)
   set_mac();
 #elif defined(WINDOWS)

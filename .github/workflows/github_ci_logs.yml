@@ -14,9 +14,7 @@ jobs:
       run: |
         curl -sI -u ${{ github.repository_owner }}:${{ github.token }} \
           https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/logs > response.txt
-        DOWNLOAD_LINK="https:"$(cat response.txt | grep -Fi Location: | cut -d: -f3)
-        DOWNLOAD_LINK=${DOWNLOAD_LINK%$'\r'}
-        curl -JO "$DOWNLOAD_LINK"
+        curl -JO $(grep -Fi "Location:" response.txt | awk -F ": " '{gsub("\r", "", $2); print $2}')
     - name: Unpack log archive
       id: archive_unpack
       run: |
