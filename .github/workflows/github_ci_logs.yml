@@ -1,0 +1,30 @@
+name: Github CI log archiver
+on:
+  workflow_run:
+    workflows: ["Github CI"]
+    types:
+      - completed
+
+jobs:
+  save_logs:
+    name: Save run logs
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download log archive
+      run: |
+        curl -sI -u ${{ github.repository_owner }}:${{ github.token }} \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/logs > response.txt
+        curl -JO $(grep -Fi "Location:" response.txt | awk -F ": " '{gsub("\r", "", $2); print $2}')
+    - name: Unpack log archive
+      id: archive_unpack
+      run: |
+        LOG_FILENAME=$(ls logs* | cut -d. -f1)
+        echo "::set-output name=log_filename::$LOG_FILENAME"
+        7z x -ologs "$LOG_FILENAME".zip
+    - name: Upload log archive as an artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ steps.archive_unpack.outputs.log_filename }}
+        path: logs/**
+    - name: Print the link to the base run
+      run: echo "::warning::This log was saved from https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
