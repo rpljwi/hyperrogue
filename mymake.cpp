@@ -36,7 +36,7 @@ bool mingw64 = false;
 
 void set_linux() {
   preprocessor = "g++ -E";
-  compiler = "g++ -Wall -Wextra -Wno-maybe-uninitialized -Wno-unused-parameter -Wno-implicit-fallthrough -rdynamic -fdiagnostics-color=always -c";
+  compiler = "g++ -Wall -Wextra -Wno-maybe-uninitialized -Wno-unused-parameter -Wno-implicit-fallthrough -Wno-psabi -rdynamic -fdiagnostics-color=always -c";
   linker = "g++ -rdynamic -o hyper";
   opts = "-DFHS -DLINUX -I/usr/include/SDL";
   libs = " savepng.o -lSDL -lSDL_ttf -lSDL_mixer -lSDL_gfx -lGLEW -lGL -lpng -rdynamic -lpthread -lz";
@@ -57,7 +57,6 @@ void set_mingw64() {
   linker = "g++ -o hyper";
   opts = "-DWINDOWS -DCAP_GLEW=1 -DCAP_PNG=1";
   libs = " savepng.o hyper.res -lopengl32 -lSDL -lSDL_gfx -lSDL_mixer -lSDL_ttf -lpthread -lz -lglew32 -lpng";
-  setvbuf(stdout, NULL, _IONBF, 0); // MinGW is quirky with output buffering
   }
 
 vector<string> modules;
@@ -91,6 +90,7 @@ int main(int argc, char **argv) {
 #else
   set_linux();
 #endif
+  setvbuf(stdout, nullptr, _IONBF, 0);
   int retval = 0; // for storing return values of some function calls
   for(string fname: {"Makefile.loc", "Makefile.simple", "Makefile"})
     if(file_exists(fname)) {
