@@ -1,0 +1,17 @@
+name: Github CI on Raspberry Pi
+on:
+  workflow_dispatch:
+
+jobs:
+  pi_run:
+    name: mymake-only test
+    runs-on: [self-hosted, raspi]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: |
+        make -f Makefile.simple mymake
+        ./mymake -O2
+    - name: Do a simple test
+      run: |
+        ./hyper --version
