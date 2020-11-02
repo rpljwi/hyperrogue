@@ -1300,14 +1300,33 @@ void settings_menu() {
     dialog::editNumber(effvolume, 0, 128, 10, 60, XLAT("sound effects volume"), "");
     dialog::numberdark = dialog::DONT_SHOW;
     dialog::reaction = [] () {
-#if ISANDROID
+      #if ISANDROID
       settingsChanged = true;
-#endif
+      #endif
       };
     dialog::bound_low(0);
     dialog::bound_up(MIX_MAX_VOLUME);
     });
-#endif
+  
+  dialog::addSelItem(XLAT("background music volume"), its(musicvolume), 'b');
+  dialog::add_action([] {
+    dialog::editNumber(musicvolume, 0, 128, 10, 60, XLAT("background music volume"), "");
+    dialog::numberdark = dialog::DONT_SHOW;
+    dialog::reaction = [] () {
+      #if CAP_SDLAUDIO
+      Mix_VolumeMusic(musicvolume);
+      #endif
+      #if ISANDROID
+      settingsChanged = true;
+      #endif
+      };
+    dialog::bound_low(0);
+    dialog::bound_up(MIX_MAX_VOLUME);
+    dialog::extra_options = [] {
+      dialog::addBoolItem_action(XLAT("play music when out of focus"), music_out_of_focus, 'A');
+      };
+    });
+  #endif
 
   dialog::addBreak(100);
 
